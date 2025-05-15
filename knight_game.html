@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knight's Tour - Devil's Plan</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --cell-size: 55px;
+            --primary: #8a2be2;
+            --secondary: #ff3cac;
+            --knight: #ffd700;
+            --valid: #39ff14;
+            --bg-dark: #0d1117;
+            --bg-light: #161b22;
+            --text: #e6edf3;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        @font-face {
+            font-family: 'GameFont';
+            src: url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+        }
+        body {
+            font-family: 'GameFont', 'Segoe UI', Arial, sans-serif;
+            background: radial-gradient(circle at top, var(--bg-light) 10%, var(--bg-dark) 90%);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 0 30px rgba(138, 43, 226, 0.4),
+                        0 0 60px rgba(255, 60, 172, 0.2);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin: 20px 0;
+        }
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5em;
+            background: linear-gradient(135deg, var(--secondary), var(--primary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-transform: uppercase;
+            margin: 10px 0;
+            letter-spacing: 2px;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+        h1::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 150px;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--secondary), var(--primary), transparent);
+        }
+        @keyframes knight-pop {
+            0% { transform: scale(0.7); }
+            100% { transform: scale(1); }
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .stat {
+            font-size: 1.2em;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 8px 15px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .stat i {
+            margin-right: 8px;
+            color: var(--secondary);
+        }
+        #board-container {
+            perspective: 1000px;
+            margin: 20px auto;
+            transform-style: preserve-3d;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+        }
+        #board {
+            display: grid;
+            grid-template-columns: repeat(7, var(--cell-size));
+            grid-template-rows: repeat(7, var(--cell-size));
+            gap: 2px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 15px 25px rgba(0, 0, 0, 0.6);
+            transform-style: preserve-3d;
+            transition: transform 1s;
+            margin: 0 auto;
+        }
+        .cell {
+            background: rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.2em;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+            transform-style: preserve-3d;
+        }
+        .cell:hover:not(.visited):not(.knight) {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateZ(5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        .cell:nth-child(even) {
+            background: rgba(255, 255, 255, 0.07);
+        }
+        .cell::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, transparent 70%, rgba(255, 255, 255, 0.1));
+            opacity: 0.5;
+        }
+        .cell::after {
+            content: attr(data-pos);
+            position: absolute;
+            bottom: 2px;
+            right: 3px;
+            font-size: 0.5em;
+            opacity: 0.6;
+        }
+        .visited {
+            background: rgba(138, 43, 226, 0.3) !important;
+            box-shadow: inset 0 0 15px var(--primary);
+        }
+        .visited::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, transparent, rgba(138, 43, 226, 0.2));
+        }
+        .knight {
+            background: var(--knight) !important;
+            color: #000;
+            box-shadow: 0 0 20px var(--knight);
+            animation: pulse 1.5s infinite alternate;
+        }
+        .knight::before {
+            content: '♞';
+            font-size: 2em;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        .valid {
+            background: rgba(57, 255, 20, 0.2) !important;
+            box-shadow: 0 0 10px var(--valid);
+        }
+        .valid:hover {
+            background: rgba(57, 255, 20, 0.4) !important;
+            transform: translateZ(10px) scale(1.05);
+        }
+        .path-line {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.3);
+            transform-origin: 0 50%;
+            z-index: 1;
+            pointer-events: none;
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin: 20px 0;
+            justify-content: center;
+        }
+        .btn {
+            padding: 10px 25px;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            letter-spacing: 1px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            text-transform: uppercase;
+        }
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: 0.5s;
+        }
+        .btn:hover::before {
+            left: 100%;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+        }
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 7px 15px rgba(138, 43, 226, 0.4);
+        }
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .board-selector {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .selector-btn {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            color: var(--text);
+            cursor: pointer;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .selector-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .selector-btn.active {
+            background: linear-gradient(135deg, var(--primary) 20%, var(--secondary) 100%);
+            box-shadow: 0 0 15px rgba(138, 43, 226, 0.4);
+            border-color: transparent;
+        }
+        .moves-container {
+            max-height: 150px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            scrollbar-width: thin;
+            scrollbar-color: var(--secondary) rgba(0, 0, 0, 0.3);
+        }
+        .moves-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .moves-container::-webkit-scrollbar-thumb {
+            background: linear-gradient(var(--secondary), var(--primary));
+            border-radius: 10px;
+        }
+        .moves-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+            gap: 8px;
+        }
+        .move-item {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            padding: 5px;
+            text-align: center;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .move-item.current {
+            background: var(--knight);
+            color: #000;
+        }
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        .modal.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        .modal-content {
+            background: rgba(22, 27, 34, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 0 30px rgba(138, 43, 226, 0.6);
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transform: scale(0.8);
+            transition: transform 0.3s;
+        }
+        .modal.active .modal-content {
+            transform: scale(1);
+        }
+        .modal h2 {
+            font-size: 2em;
+            background: linear-gradient(135deg, var(--secondary), var(--primary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
+        }
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-item {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 1.8em;
+            margin: 10px 0;
+            font-weight: bold;
+            color: var(--secondary);
+        }
+        .footer {
+            margin-top: 20px;
+            font-size: 0.9em;
+            opacity: 0.7;
+            text-align: center;
+        }
+        .footer a {
+            color: var(--secondary);
+            text-decoration: none;
+        }
+        
+        /* Solution controls */
+        .solution-controls {
+            margin: 20px auto;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            max-width: 600px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .speed-control {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .speed-control span {
+            font-size: 0.9em;
+        }
+        .speed-control input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 200px;
+            height: 5px;
+            border-radius: 5px;
+            background: #444;
+            outline: none;
+        }
+        .speed-control input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: var(--secondary);
+            cursor: pointer;
+        }
+        .solution-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        .solution-step {
+            position: absolute;
+            font-size: 0.7em;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            top: 3px;
+            left: 3px;
+            z-index: 2;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 20px var(--knight); }
+            100% { box-shadow: 0 0 35px var(--knight); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-in {
+            animation: fadeIn 0.5s forwards;
+        }
+        .current-step {
+            animation: pulse 0.8s infinite alternate;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            :root { --cell-size: 40px; }
+            .container { padding: 15px; }
+            .stat { font-size: 1em; padding: 6px 12px; }
+            .controls { flex-wrap: wrap; }
+        }
+        @media (max-width: 480px) {
+            :root { --cell-size: 30px; }
+            h1 { font-size: 1.8em; }
+            .controls, .solution-buttons { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container animate-in">
+        <h1>Knight's Tour</h1>
+        
+        <div class="board-selector">
+            <button class="selector-btn" data-size="6">6×6</button>
+            <button class="selector-btn active" data-size="7">7×7</button>
+            <button class="selector-btn" data-size="8">8×8</button>
+            <button class="selector-btn" data-size="9">9×9</button>
+        </div>
+        
+        <div class="header">
+            <div class="stat" id="moves-stat">
+                <i class="fas fa-chess-knight"></i>
+                <span>Moves: 0</span>
+            </div>
+            <div class="stat" id="cells-stat">
+                <i class="fas fa-th"></i>
+                <span>Cells: 0/49</span>
+            </div>
+        </div>
+
+        <div id="board-container">
+            <div id="board"></div>
+        </div>
+
+        <div class="solution-controls" id="solution-controls" style="display: none;">
+            <div class="speed-control">
+                <span>Animation Speed:</span>
+                <input type="range" id="solution-speed" min="1" max="10" value="5">
+            </div>
+            <div class="solution-buttons">
+                <button class="btn btn-secondary" id="step-solution-btn">
+                    <i class="fas fa-step-forward"></i> Step
+                </button>
+                <button class="btn btn-secondary" id="play-solution-btn">
+                    <i class="fas fa-play"></i> Play
+                </button>
+                <button class="btn btn-secondary" id="cancel-solution-btn">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-secondary" id="undo-btn">
+                <i class="fas fa-undo"></i> Undo
+            </button>
+            <button class="btn btn-secondary" id="hint-btn">
+                <i class="fas fa-lightbulb"></i> Hint
+            </button>
+            <button class="btn btn-secondary" id="show-solution-btn">
+                <i class="fas fa-magic"></i> Solution
+            </button>
+            <button class="btn btn-secondary" id="rotate-btn">
+                <i class="fas fa-sync"></i> Rotate
+            </button>
+            <button class="btn btn-primary" id="reset-btn">
+                <i class="fas fa-sync-alt"></i> Reset
+            </button>
+        </div>
+
+        <div class="moves-container">
+            <div class="moves-grid" id="moves-list"></div>
+        </div>
+    </div>
+
+    <div class="modal" id="game-over-modal">
+        <div class="modal-content">
+            <h2>Game Over!</h2>
+            <p id="game-over-message">You've visited <span id="final-count">0</span> cells.</p>
+            
+            <div class="stat-grid">
+                <div class="stat-item">
+                    <div>Moves Made</div>
+                    <div class="stat-value" id="final-moves">0</div>
+                </div>
+                <div class="stat-item">
+                    <div>Cells Visited</div>
+                    <div class="stat-value" id="final-cells">0</div>
+                </div>
+                <div class="stat-item">
+                    <div>Percentage</div>
+                    <div class="stat-value" id="final-percentage">0%</div>
+                </div>
+                <div class="stat-item">
+                    <div>Rating</div>
+                    <div class="stat-value" id="final-rating">-</div>
+                </div>
+            </div>
+            
+            <button class="btn btn-primary" id="play-again-btn">
+                <i class="fas fa-play"></i> Play Again
+            </button>
+        </div>
+    </div>
+
+    <div class="footer">
+        &copy; 2025 Knight's Tour &mdash; Inspired by Devil's Plan on Netflix
+    </div>
+
+    <script>
+        const KNIGHT_MOVES = [
+            [2, 1], [1, 2], [-1, 2], [-2, 1],
+            [-2, -1], [-1, -2], [1, -2], [2, -1]
+        ];
+        
+        // Game state
+        let BOARD_SIZE = 7;
+        let board = [];
+        let knightPos = null;
+        let moveCount = 0;
+        let gameOver = false;
+        let moveHistory = [];
+        let pathLines = [];
+        let rotationDeg = 0;
+        let showingHint = false;
+        let solutionPath = [];
+        let showingSolution = false;
+        let solutionStep = 0;
+        let solutionInterval = null;
+
+        // DOM Elements
+        const boardElem = document.getElementById('board');
+        const movesStatElem = document.getElementById('moves-stat');
+        const cellsStatElem = document.getElementById('cells-stat');
+        const movesListElem = document.getElementById('moves-list');
+        const gameOverModal = document.getElementById('game-over-modal');
+        
+        // Sound effects
+        const moveSound = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==');
+        const gameOverSound = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==');
+
+        function tryLoadSounds() {
+            moveSound.src = 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3';
+            gameOverSound.src = 'https://assets.mixkit.co/active_storage/sfx/3308/3308-preview.mp3';
+        }
+        tryLoadSounds();
+
+        // Create the board
+        function createBoard() {
+            boardElem.innerHTML = '';
+            pathLines = [];
+            board = Array.from({length: BOARD_SIZE}, () => Array(BOARD_SIZE).fill(false));
+            
+            // Update board CSS grid
+            boardElem.style.gridTemplateColumns = `repeat(${BOARD_SIZE}, var(--cell-size))`;
+            boardElem.style.gridTemplateRows = `repeat(${BOARD_SIZE}, var(--cell-size))`;
+            
+            for (let y = 0; y < BOARD_SIZE; y++) {
+                for (let x = 0; x < BOARD_SIZE; x++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.x = x;
+                    cell.dataset.y = y;
+                    cell.dataset.pos = `${x+1},${y+1}`;
+                    cell.addEventListener('click', () => handleCellClick(x, y));
+                    boardElem.appendChild(cell);
+                }
+            }
+            
+            // Update cell count stat
+            const totalCells = BOARD_SIZE * BOARD_SIZE;
+            cellsStatElem.innerHTML = `<i class="fas fa-th"></i><span>Cells: 0/${totalCells}</span>`;
+        }
+        
+        // Validate moves
+        function isValid(x, y) {
+            return x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE && !board[y][x];
+        }
+        
+        // Get valid knight moves from position
+        function getValidMoves(x, y) {
+            return KNIGHT_MOVES
+                .map(([dx, dy]) => [x + dx, y + dy])
+                .filter(([nx, ny]) => isValid(nx, ny));
+        }
+        
+        // Render the board state
+        function renderBoard() {
+            // Clear hints if any
+            if (showingHint) {
+                clearHints();
+            }
+            
+            // Update all cells
+            for (let y = 0; y < BOARD_SIZE; y++) {
+                for (let x = 0; x < BOARD_SIZE; x++) {
+                    const cell = document.querySelector(`.cell[data-x='${x}'][data-y='${y}']`);
+                    
+                    // Reset classes
+                    cell.className = 'cell';
+                    
+                    // Add appropriate classes
+                    if (board[y][x]) {
+                        cell.classList.add('visited');
+                    }
+                    
+                    if (knightPos && x === knightPos[0] && y === knightPos[1]) {
+                        cell.classList.add('knight');
+                    }
+                }
+            }
+            
+            // Add classes for valid moves
+            if (knightPos && !gameOver) {
+                const validMoves = getValidMoves(knightPos[0], knightPos[1]);
+                validMoves.forEach(([x, y]) => {
+                    const cell = document.querySelector(`.cell[data-x='${x}'][data-y='${y}']`);
+                    cell.classList.add('valid');
+                });
+            }
+        }
+
+        // Handle cell click
+        function handleCellClick(x, y) {
+            if (gameOver || showingSolution) return;
+            
+            if (!knightPos) {
+                // First move
+                knightPos = [x, y];
+                board[y][x] = true;
+                moveCount = 1;
+                moveHistory = [[x, y]];
+                updateStats();
+                renderBoard();
+                moveSound.play().catch(e => console.log('Sound play error:', e));
+            } else {
+                // Subsequent moves
+                const validMoves = getValidMoves(knightPos[0], knightPos[1]);
+                const isValidMove = validMoves.some(([vx, vy]) => vx === x && vy === y);
+                
+                if (isValidMove) {
+                    // Create path line from previous position
+                    createPathLine(knightPos[0], knightPos[1], x, y);
+                    
+                    knightPos = [x, y];
+                    board[y][x] = true;
+                    moveCount++;
+                    moveHistory.push([x, y]);
+                    updateStats();
+                    renderBoard();
+                    
+                    // Play sound
+                    moveSound.currentTime = 0;
+                    moveSound.play().catch(e => console.log('Sound play error:', e));
+                    
+                    // Check if game over (no more moves)
+                    if (getValidMoves(x, y).length === 0) {
+                        endGame();
+                    }
+                } else if (showingHint) {
+                    clearHints();
+                }
+            }
+        }
+        
+        // Create a visual line representing knight's path
+        function createPathLine(x1, y1, x2, y2) {
+            const cellSize = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cell-size'));
+            
+            // Calculate center points of cells
+            const centerX1 = x1 * cellSize + cellSize / 2;
+            const centerY1 = y1 * cellSize + cellSize / 2;
+            const centerX2 = x2 * cellSize + cellSize / 2;
+            const centerY2 = y2 * cellSize + cellSize / 2;
+            
+            // Calculate length and angle
+            const deltaX = centerX2 - centerX1;
+            const deltaY = centerY2 - centerY1;
+            const length = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+            const angle = Math.atan2(deltaY, deltaX) * 180 / Math.PI;
+            
+            // Create the line element
+            const line = document.createElement('div');
+            line.className = 'path-line';
+            line.style.width = `${length}px`;
+            line.style.height = '2px';
+            line.style.left = `${centerX1}px`;
+            line.style.top = `${centerY1}px`;
+            line.style.transform = `rotate(${angle}deg)`;
+            
+            boardElem.appendChild(line);
+            pathLines.push(line);
+        }
+        
+        // Update all stats elements
+        function updateStats() {
+            const visitedCount = moveHistory.length;
+            const totalCells = BOARD_SIZE * BOARD_SIZE;
+            const percentage = Math.round((visitedCount / totalCells) * 100);
+            
+            movesStatElem.innerHTML = `<i class="fas fa-chess-knight"></i><span>Moves: ${moveCount}</span>`;
+            cellsStatElem.innerHTML = `<i class="fas fa-th"></i><span>Cells: ${visitedCount}/${totalCells}</span>`;
+            
+            renderMovesList();
+        }
+
+        // Render the move history list
+        function renderMovesList() {
+            movesListElem.innerHTML = '';
+            
+            moveHistory.forEach(([x, y], index) => {
+                const moveItem = document.createElement('div');
+                moveItem.className = 'move-item';
+                moveItem.textContent = `${x+1},${y+1}`;
+                
+                if (index === moveHistory.length - 1) {
+                    moveItem.classList.add('current');
+                }
+                
+                moveItem.addEventListener('click', () => {
+                    if (index < moveHistory.length - 1 && !gameOver) {
+                        undoToMove(index + 1);
+                    }
+                });
+                
+                movesListElem.appendChild(moveItem);
+            });
+            
+            // Scroll to the bottom
+            movesListElem.scrollTop = movesListElem.scrollHeight;
+        }
+        
+        // Undo the last move
+        function undoLastMove() {
+            if (!moveHistory.length || gameOver) return;
+            
+            if (moveHistory.length === 1) {
+                // Reset if only one move
+                resetGame();
+            } else {
+                // Remove path line
+                if (pathLines.length) {
+                    const lastLine = pathLines.pop();
+                    if (lastLine && lastLine.parentNode) {
+                        lastLine.parentNode.removeChild(lastLine);
+                    }
+                }
+                
+                // Update game state
+                const last = moveHistory.pop();
+                board[last[1]][last[0]] = false;
+                const prev = moveHistory[moveHistory.length - 1];
+                knightPos = [prev[0], prev[1]];
+                moveCount--;
+                updateStats();
+                renderBoard();
+            }
+        }
+        
+        // Undo to specific move
+        function undoToMove(targetIndex) {
+            while (moveHistory.length > targetIndex) {
+                undoLastMove();
+            }
+        }
+        
+        // Show hints for next best move
+        function showHint() {
+            if (!knightPos || gameOver) return;
+            
+            clearHints();
+            
+            // Get valid moves
+            const validMoves = getValidMoves(knightPos[0], knightPos[1]);
+            if (!validMoves.length) return;
+            
+            // Find move with fewest next moves (Warnsdorff's algorithm)
+            let bestMove = null;
+            let fewestNextMoves = Infinity;
+            
+            validMoves.forEach(([x, y]) => {
+                // Temporarily mark this cell as visited
+                board[y][x] = true;
+                const nextMovesCount = getValidMoves(x, y).length;
+                board[y][x] = false; // Restore state
+                
+                if (nextMovesCount < fewestNextMoves) {
+                    fewestNextMoves = nextMovesCount;
+                    bestMove = [x, y];
+                }
+            });
+            
+            if (bestMove) {
+                const [x, y] = bestMove;
+                const cell = document.querySelector(`.cell[data-x='${x}'][data-y='${y}']`);
+                cell.style.boxShadow = '0 0 20px 10px var(--knight)';
+                cell.style.animation = 'pulse 1s infinite alternate';
+            }
+            
+            showingHint = true;
+        }
+        
+        // Clear any active hints
+        function clearHints() {
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach(cell => {
+                cell.style.boxShadow = '';
+                cell.style.animation = '';
+            });
+            showingHint = false;
+        }
+
+        // Rotate the board for a different perspective
+        function rotateBoard() {
+            rotationDeg = (rotationDeg + 90) % 360;
+            boardElem.style.transform = `rotateZ(${rotationDeg}deg)`;
+        }
+        
+        // End the game
+        function endGame() {
+            gameOver = true;
+            
+            const visitedCount = moveHistory.length;
+            const totalCells = BOARD_SIZE * BOARD_SIZE;
+            const percentage = Math.round((visitedCount / totalCells) * 100);
+            let rating = '';
+            
+            // Set rating based on percentage
+            if (percentage >= 95) rating = 'Grandmaster!';
+            else if (percentage >= 80) rating = 'Master';
+            else if (percentage >= 65) rating = 'Expert';
+            else if (percentage >= 50) rating = 'Intermediate';
+            else rating = 'Novice';
+            
+            // Update modal content
+            document.getElementById('final-count').textContent = visitedCount;
+            document.getElementById('final-moves').textContent = moveCount;
+            document.getElementById('final-cells').textContent = visitedCount;
+            document.getElementById('final-percentage').textContent = `${percentage}%`;
+            document.getElementById('final-rating').textContent = rating;
+            
+            // Show modal with delay
+            setTimeout(() => {
+                gameOverModal.classList.add('active');
+                gameOverSound.play().catch(e => console.log('Sound play error:', e));
+            }, 1000);
+        }
+        
+        // Reset the game
+        function resetGame() {
+            knightPos = null;
+            moveCount = 0;
+            gameOver = false;
+            moveHistory = [];
+            showingSolution = false;
+            
+            // Remove all path lines
+            pathLines.forEach(line => {
+                if (line.parentNode) {
+                    line.parentNode.removeChild(line);
+                }
+            });
+            pathLines = [];
+            
+            // Reset board
+            createBoard();
+            updateStats();
+            
+            // Hide modal
+            gameOverModal.classList.remove('active');
+            
+            // Reset rotation
+            rotationDeg = 0;
+            boardElem.style.transform = '';
+        }
+
+        // Change board size
+        function changeBoardSize(size) {
+            BOARD_SIZE = size;
+            resetGame();
+            
+            // Update active button
+            document.querySelectorAll('.selector-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`.selector-btn[data-size="${size}"]`).classList.add('active');
+        }
+        
+        // Find a solution using Warnsdorff's algorithm
+        function findSolution(startX, startY) {
+            // Create a new board for solution
+            const solutionBoard = Array.from({length: BOARD_SIZE}, () => Array(BOARD_SIZE).fill(false));
+            const solution = [[startX, startY]];
+            solutionBoard[startY][startX] = true;
+            
+            let currentX = startX;
+            let currentY = startY;
+            
+            while(solution.length < BOARD_SIZE * BOARD_SIZE) {
+                // Get valid moves from current position
+                let possibleMoves = [];
+                for (const [dx, dy] of KNIGHT_MOVES) {
+                    const nx = currentX + dx;
+                    const ny = currentY + dy;
+                    if (nx >= 0 && nx < BOARD_SIZE && ny >= 0 && ny < BOARD_SIZE && !solutionBoard[ny][nx]) {
+                        possibleMoves.push([nx, ny]);
+                    }
+                }
+                
+                if (possibleMoves.length === 0) {
+                    // No solution found
+                    break;
+                }
+                
+                // Use Warnsdorff's heuristic: choose the move with fewest onward moves
+                let nextMove = null;
+                let fewestNextMoves = Infinity;
+                
+                for (const [mx, my] of possibleMoves) {
+                    let count = 0;
+                    for (const [dx, dy] of KNIGHT_MOVES) {
+                        const nx = mx + dx;
+                        const ny = my + dy;
+                        if (nx >= 0 && nx < BOARD_SIZE && ny >= 0 && ny < BOARD_SIZE && !solutionBoard[ny][nx]) {
+                            count++;
+                        }
+                    }
+                    
+                    if (count < fewestNextMoves) {
+                        fewestNextMoves = count;
+                        nextMove = [mx, my];
+                    }
+                }
+                
+                // Mark the cell as visited and continue
+                currentX = nextMove[0];
+                currentY = nextMove[1];
+                solution.push([currentX, currentY]);
+                solutionBoard[currentY][currentX] = true;
+            }
+            
+            return solution.length === BOARD_SIZE * BOARD_SIZE ? solution : null;
+        }
+        
+        // Show solution interface
+        function showSolution() {
+            if (!knightPos || showingSolution) {
+                return;
+            }
+            
+            // Find solution from current position for current board size
+            const solution = findSolution(knightPos[0], knightPos[1]);
+            if (!solution) {
+                alert("No complete solution found from current position! Try starting from a different cell.");
+                return;
+            }
+            
+            // Initialize solution state
+            showingSolution = true;
+            solutionPath = solution;
+            solutionStep = 0;
+            
+            // Clear all previous paths
+            clearPathLines();
+            
+            // Reset the board visual state while keeping current knight position
+            resetBoardForSolution();
+            
+            // Show solution controls
+            document.getElementById('solution-controls').style.display = 'block';
+            
+            // Disable regular controls during solution
+            document.getElementById('undo-btn').disabled = true;
+            document.getElementById('hint-btn').disabled = true;
+            document.getElementById('show-solution-btn').disabled = true;
+            document.getElementById('rotate-btn').disabled = true;
+            
+            // Animate first step
+            showNextSolutionStep();
+        }
+        
+        // Clear all path lines
+        function clearPathLines() {
+            pathLines.forEach(line => {
+                if (line.parentNode) {
+                    line.parentNode.removeChild(line);
+                }
+            });
+            pathLines = [];
+        }
+        
+        // Reset board for solution animation
+        function resetBoardForSolution() {
+            // Keep only the knight's position marked
+            for (let y = 0; y < BOARD_SIZE; y++) {
+                for (let x = 0; x < BOARD_SIZE; x++) {
+                    if (knightPos[0] === x && knightPos[1] === y) continue;
+                    
+                    const cell = document.querySelector(`.cell[data-x='${x}'][data-y='${y}']`);
+                    cell.className = 'cell';
+                    
+                    // Remove any existing solution step indicators
+                    const stepIndicators = cell.querySelectorAll('.solution-step');
+                    stepIndicators.forEach(indicator => indicator.remove());
+                }
+            }
+        }
+        
+        // Show next step in the solution
+        function showNextSolutionStep() {
+            if (solutionStep >= solutionPath.length - 1) {
+                return; // Solution complete
+            }
+            
+            // Clear current-step class from all cells
+            document.querySelectorAll('.current-step').forEach(element => {
+                element.classList.remove('current-step');
+            });
+            
+            // Show next step
+            solutionStep++;
+            
+            const currentPos = solutionPath[solutionStep - 1];
+            const nextPos = solutionPath[solutionStep];
+            
+            // Create path line
+            createPathLine(currentPos[0], currentPos[1], nextPos[0], nextPos[1]);
+            
+            // Mark the cell
+            const cell = document.querySelector(`.cell[data-x='${nextPos[0]}'][data-y='${nextPos[1]}']`);
+            cell.classList.add('visited');
+            cell.classList.add('current-step');
+            
+            // Add step number
+            const stepElem = document.createElement('span');
+            stepElem.className = 'solution-step';
+            stepElem.textContent = solutionStep;
+            cell.appendChild(stepElem);
+            
+            // Update counts
+            document.getElementById('moves-stat').innerHTML = 
+                `<i class="fas fa-chess-knight"></i><span>Moves: ${solutionStep}</span>`;
+            document.getElementById('cells-stat').innerHTML = 
+                `<i class="fas fa-th"></i><span>Cells: ${solutionStep + 1}/${BOARD_SIZE * BOARD_SIZE}</span>`;
+            
+            // If we've completed the solution
+            if (solutionStep === solutionPath.length - 1) {
+                document.getElementById('play-solution-btn').innerHTML = 
+                    `<i class="fas fa-check"></i> Complete`;
+                document.getElementById('step-solution-btn').disabled = true;
+            }
+        }
+        
+        // Play the solution animation
+        function playSolution() {
+            const playButton = document.getElementById('play-solution-btn');
+            
+            // If we're at the end already
+            if (solutionStep >= solutionPath.length - 1) {
+                return;
+            }
+            
+            // If we're already playing, stop
+            if (solutionInterval) {
+                clearInterval(solutionInterval);
+                solutionInterval = null;
+                playButton.innerHTML = `<i class="fas fa-play"></i> Play`;
+                return;
+            }
+            
+            // Start playing
+            playButton.innerHTML = `<i class="fas fa-pause"></i> Pause`;
+            
+            // Get speed from slider (invert as higher number = faster)
+            const speed = 1000 / document.getElementById('solution-speed').value;
+            
+            solutionInterval = setInterval(() => {
+                showNextSolutionStep();
+                
+                // If we've reached the end, stop the interval
+                if (solutionStep >= solutionPath.length - 1) {
+                    clearInterval(solutionInterval);
+                    solutionInterval = null;
+                    playButton.innerHTML = `<i class="fas fa-check"></i> Complete`;
+                }
+            }, speed);
+        }
+        
+        // Cancel the solution display
+        function cancelSolution() {
+            // Stop any running animation
+            if (solutionInterval) {
+                clearInterval(solutionInterval);
+                solutionInterval = null;
+            }
+            
+            // Reset solution state
+            showingSolution = false;
+            solutionPath = [];
+            solutionStep = 0;
+            
+            // Hide solution controls
+            document.getElementById('solution-controls').style.display = 'none';
+            
+            // Re-enable controls
+            document.getElementById('undo-btn').disabled = false;
+            document.getElementById('hint-btn').disabled = false;
+            document.getElementById('show-solution-btn').disabled = false;
+            document.getElementById('rotate-btn').disabled = false;
+            
+            // Reset the board
+            clearPathLines();
+            renderBoard();
+            updateStats();
+        }
+        
+        // Reset the game also resets any solution display
+        function resetGame() {
+            // Cancel any running solution
+            if (showingSolution) {
+                cancelSolution();
+            }
+            
+            knightPos = null;
+            moveCount = 0;
+            gameOver = false;
+            moveHistory = [];
+            showingSolution = false;
+            
+            // Remove all path lines
+            clearPathLines();
+            
+            // Reset board
+            createBoard();
+            updateStats();
+            
+            // Hide modal
+            gameOverModal.classList.remove('active');
+            
+            // Reset rotation
+            rotationDeg = 0;
+            boardElem.style.transform = '';
+        }
+
+        // Event Listeners
+        document.getElementById('undo-btn').addEventListener('click', undoLastMove);
+        document.getElementById('hint-btn').addEventListener('click', showHint);
+        document.getElementById('show-solution-btn').addEventListener('click', showSolution);
+        document.getElementById('rotate-btn').addEventListener('click', rotateBoard);
+        document.getElementById('reset-btn').addEventListener('click', resetGame);
+        document.getElementById('play-again-btn').addEventListener('click', resetGame);
+        
+        // Solution control event listeners
+        document.getElementById('step-solution-btn').addEventListener('click', showNextSolutionStep);
+        document.getElementById('play-solution-btn').addEventListener('click', playSolution);
+        document.getElementById('cancel-solution-btn').addEventListener('click', cancelSolution);
+        
+        // Speed slider
+        document.getElementById('solution-speed').addEventListener('input', function() {
+            if (solutionInterval) {
+                // Restart animation with new speed
+                clearInterval(solutionInterval);
+                solutionInterval = null;
+                playSolution();
+            }
+        });
+        
+        // Board size selectors
+        document.querySelectorAll('.selector-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const size = parseInt(btn.dataset.size);
+                changeBoardSize(size);
+            });
+        });
+        
+        // Initialize the game
+        createBoard();
+        updateStats();
+    </script>
+</body>
+</html>

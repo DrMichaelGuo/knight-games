@@ -1,0 +1,15 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run Knight Game",
+            "type": "shell",
+            "command": "python3",
+            "args": [
+                "main.py"
+            ],
+            "group": "build",
+            "problemMatcher": []
+        }
+    ]
+}
